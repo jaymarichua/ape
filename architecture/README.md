@@ -1,8 +1,5 @@
 # Architecture Overview
 
-## Summary
-![Overview](img/overview.svg)
-
 ## AWS
 
 The goal here is to run a *convenient* workflow using the Amazon Bedrock foundational model, security guardrails feature and an S3 bucket storage.
