@@ -14,8 +14,7 @@ The goal here is to run a *convenient* workflow using the Amazon Bedrock foundat
 
 ##### S3 bucket
 * Stores the input (prompt dataset) in one directory.
-* Stores the output (foundation LLM response) in one directory.
-* Stores logging in one directory.
+* Stores the output (foundation LLM responses) in separate directories.
 
 ##### Amazon Bedrock Foundation LLM
 * Llama
