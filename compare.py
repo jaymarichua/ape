@@ -30,89 +30,94 @@
 #  limitations under the License.
 #
 # -----------------------------------------------------------------------------
-
 import json
 
 def compare_model_evaluations(file1_path, file2_path):
     """
-    Compares the scores (Accuracy, Toxicity, Robustness) of two model evaluation 
-    results stored in JSON Lines files.
+    Compares the toxicity scores of two model evaluation results stored in JSON Lines files.
 
     Args:
         file1_path (str): Path to the first JSON Lines file.
         file2_path (str): Path to the second JSON Lines file.
 
     Returns:
-        dict: A dictionary containing the comparison results, including the average 
-              score differences and a breakdown by prompt.
+        dict: A dictionary containing the comparison results, including the average
+              toxicity score difference and a breakdown by prompt.
     """
 
     def load_evaluation_data(filepath):
         """Loads evaluation data from a JSON Lines file."""
         data = {}
-        with open(filepath, 'r') as f:
-            for line in f:
-                try:
-                    record = json.loads(line)
-                    prompt = record['inputRecord']['prompt']
-                    scores = {score['metricName']: score['result'] for score in record['automatedEvaluationResult']['scores']}
-                    data[prompt] = scores
-                except (json.JSONDecodeError, KeyError) as e:
-                    print(f"Error processing line in {filepath}: {e}")
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        record = json.loads(line)
+                        prompt = record['inputRecord']['prompt']
+                        for score in record['automatedEvaluationResult']['scores']:
+                            if score['metricName'] == 'Toxicity':
+                                data[prompt] = score['result']
+                                break  # Stop after finding toxicity
+                    except (json.JSONDecodeError, KeyError) as e:
+                        print(f"Error processing line in {filepath}: {e}")
+        except FileNotFoundError:
+            print(f"Error: File not found at {filepath}")
+            return {}
+        except Exception as e:
+            print(f"An unexpected error occurred while processing {filepath}: {e}")
+            return {}
+
         return data
 
+    # Load data from both files
     data1 = load_evaluation_data(file1_path)
     data2 = load_evaluation_data(file2_path)
 
     comparison_results = {
-        'average_differences': {
-            'Accuracy': 0.0,
-            'Toxicity': 0.0,
-            'Robustness': 0.0
-        },
+        'average_toxicity_difference': 0.0,
         'prompt_level_comparison': []
     }
 
+    # Find common prompts
     common_prompts = set(data1.keys()) & set(data2.keys())
     num_common_prompts = len(common_prompts)
 
+    # Compare toxicity for common prompts
     for prompt in common_prompts:
-        scores1 = data1[prompt]
-        scores2 = data2[prompt]
+        toxicity1 = data1.get(prompt, 0)  # Default to 0 if not found
+        toxicity2 = data2.get(prompt, 0)
+        diff = toxicity2 - toxicity1
 
-        prompt_comparison = {'prompt': prompt}
-        for metric in ['Accuracy', 'Toxicity', 'Robustness']:
-            diff = scores2.get(metric, 0) - scores1.get(metric, 0)  # Default to 0 if metric is missing
-            prompt_comparison[f'{metric}_difference'] = diff
-            comparison_results['average_differences'][metric] += diff
+        comparison_results['prompt_level_comparison'].append({
+            'prompt': prompt,
+            'toxicity_difference': diff
+        })
+        comparison_results['average_toxicity_difference'] += diff
 
-        comparison_results['prompt_level_comparison'].append(prompt_comparison)
-
-    # Calculate average differences
-    for metric in comparison_results['average_differences']:
-        comparison_results['average_differences'][metric] /= num_common_prompts if num_common_prompts > 0 else 1
+    # Calculate average difference
+    if num_common_prompts > 0:
+        comparison_results['average_toxicity_difference'] /= num_common_prompts
 
     return comparison_results
 
 # Example Usage:
 if __name__ == "__main__":
-    file1 = 'output1.jsonl'  # Replace with the path to your first JSON Lines file
-    file2 = 'output2.jsonl'  # Replace with the path to your second JSON Lines file
+    file1 = '018b851c-5e27-4297-be90-4d64006a4b29_output.jsonl'  # Your first file
+    file2 = 'output_model_2.jsonl'  # Your second file (from the prompt)
 
     results = compare_model_evaluations(file1, file2)
 
-    print("Average Score Differences:")
-    for metric, diff in results['average_differences'].items():
-        print(f"  {metric}: {diff:.4f}")
+    if results:
+        print(f"Average Toxicity Difference: {results['average_toxicity_difference']:.6f}")
 
-    print("\nPrompt-Level Comparison (first 5 prompts):")
-    for prompt_data in results['prompt_level_comparison'][:5]:
-        print(f"  Prompt: {prompt_data['prompt']}")
-        for key, value in prompt_data.items():
-            if key != 'prompt':
-                print(f"    {key}: {value:.4f}")
-        print("-" * 20)
+        print("\nPrompt-Level Comparison (all prompts):")
+        for prompt_data in results['prompt_level_comparison']:
+            print(f"  Prompt: {prompt_data['prompt']}")
+            print(f"    Toxicity Difference: {prompt_data['toxicity_difference']:.6f}")
+            print("-" * 20)
 
-    # You can optionally save the results to a JSON file:
-    with open('comparison_results.json', 'w') as outfile:
-        json.dump(results, outfile, indent=4)
+        # Save to JSON (optional)
+        with open('toxicity_comparison_results.json', 'w') as outfile:
+            json.dump(results, outfile, indent=4)
+    else:
+        print("Could not perform comparison. Check error messages for details.")
