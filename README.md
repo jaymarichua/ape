@@ -110,9 +110,10 @@ F1 and deltaF1: F1 score is the harmonic mean of precision and recall. DeltaF1 l
 Accuracy (Binary accuracy from classification_accuracy_score): A specific type of accuracy calculation likely used for binary classification tasks.
 classification_accuracy_score and delta_classification_accuracy_score: Similar to above, but may involve a more general classification accuracy score and its change under different conditions.
 
-### esearch Papers: The Foundation of Wisdom
+### Research Papers: The Foundation of Wisdom
 The LLM Warden is built upon the foundation of rigorous academic research. Here are the tomes of knowledge that underpin its power:
 
+```
 Dhamala, J., et al. "BOLD: Dataset and Metrics for Measuring Biases in Open-Ended Language Generation." Proceedings of the 2021 ACM Conference on Fairness, Accountability, and Transparency, 2021, https://dl.acm.org/doi/abs/10.1145/3442188.3445900.
 Gehman, S., et al. "RealToxicityPrompts: Evaluating Neural Toxic Degeneration in Language Models." ArXiv preprint arXiv:2009.11462, 2020, https://arxiv.org/abs/2009.11462.
 ElSahar, H., et al. "T-REx: A Large Scale Alignment of Natural Language with Knowledge Base Triples." Proceedings of the 27th International Conference on Computational Linguistics, 2018, https://aclanthology.org/C18-1267/.
@@ -123,6 +124,7 @@ Kwiatkowski, T., et al. "Natural Questions: A Benchmark for Question Answering R
 Joshi, M., et al. "TriviaQA: A Large Scale Distantly Supervised Challenge Dataset for Reading Comprehension." Proceedings of the 55th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), 2017, https://arxiv.org/abs/1705.03551.
 "Women's E-Commerce Clothing Reviews." Kaggle, https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews.
 Zhang, T., et al. "BERTScore: Evaluating Text Generation with BERT." ICLR 2020, 2020, https://arxiv.org/abs/1904.09675.
+```
 
-Conclusion: A Warden's Duty is Never Done
+### Conclusion: A Warden's Duty is Never Done
 The path of the LLM Warden is fraught with challenges, but the rewards are great. By mastering the tools and knowledge within this repository, you contribute to a future where technology and humanity coexist in harmony. Go forth, brave Warden, and may your guardrails stand strong against the tides of chaos!
