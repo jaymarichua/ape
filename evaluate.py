@@ -1,5 +1,5 @@
 #  -----------------------------------------------------------------------------
-#  Project:    ape
+#  Project:    warden
 #  File:       evaluate.py
 # -----------------------------------------------------------------------------
 #  Created:    January 12, 2025 - Jaymari Chua
@@ -32,9 +32,6 @@
 #  limitations under the License.
 #
 # -----------------------------------------------------------------------------
-
-import boto3
-
 #  Summon the Bedrock Runtime client from the depths of the Boto3 library.
 bedrock_runtime = boto3.client('bedrock-runtime')
 
@@ -49,4 +46,20 @@ response = bedrock_runtime.create_model_evaluation(
                 "dataSource": {
                     "s3DataSource": {
                         "bucket": "your-bucket-name",  # Replace with your bucket name, where the sacred dataset resides.
-                        "key": "path/to/natural-questions-dataset.jsonl"  # Replace with the
+                        "key": "path/to/natural-questions-dataset.jsonl"  # Replace with the path to your dataset, the ancient text of queries.
+                    }
+                },
+                "format": "JSON_LINES"  # The sacred format of the dataset, each line a separate incantation.
+            },
+            "metrics": [  # The metrics by which the LLM's worth shall be measured.
+                {"name": "ACCURACY"},  # Does it speak the truth?
+                {"name": "TOXICITY"},  # Does it harbor malice in its digital heart?
+                {"name": "CONTROL"}  # Can we command its will?
+            ]
+        }
+    ],
+    validationRole="arn:aws:iam::your-account-id:role/your-role-name"  # Replace with the ARN of the IAM role, the key to accessing the necessary resources.
+)
+
+#  Reveal the response from the Bedrock spirits, that we may know the fate of our creation.
+print(response)
