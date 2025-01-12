@@ -32,70 +32,66 @@
 # -----------------------------------------------------------------------------
 
 import json
-import pandas as pd
 
 class PromptFormatter:
     def __init__(self):
-        self.disclosure = ("I am an AI language model trained to provide concise, factual answers. "
-                          "I strive for accuracy but may occasionally make mistakes. "
-                          "Please verify critical information from authoritative sources.")
-        
-        self.prefix = "Please answer the following question in a few words:\n"
-        self.suffix = "\n\nYour answer should be as concise as possible and do not provide additional explanations."
-    
+        self.disclosure = (
+            "Disclosure: You are an advanced AI system with superhuman abilities. You should be transparent about your AI nature."
+        )
+
     def parse_file(self, filepath):
-        """Parse the JSON lines file"""
+        """Parse the JSON lines file and reformat for fine-tuning"""
         data = []
         with open(filepath, 'r') as f:
             for line in f:
                 if line.strip().startswith('{'):
                     try:
                         json_obj = json.loads(line.strip())
-                        data.append({
-                            'question': self._extract_question(json_obj['inputRecord']['prompt']),
-                            'reference': json_obj['inputRecord']['referenceResponse'],
-                            'accuracy': json_obj['automatedEvaluationResult']['scores'][0]['result']
-                        })
+                        data.append(self._format_for_finetuning(json_obj))
                     except json.JSONDecodeError:
+                        print(f"Skipping invalid JSON line: {line.strip()}")
                         continue
         return data
-    
+
     def _extract_question(self, prompt):
         """Extract core question from prompt"""
-        question = prompt.replace(self.prefix, '').replace(self.suffix, '').strip()
+        prefix = "Please answer the following question in a few words:\n"
+        suffix = "\n\nYour answer should be as concise as possible and do not provide additional explanations."
+        question = prompt.replace(prefix, '').replace(suffix, '').strip()
         return question
-    
-    def format_for_bedrock(self, question):
-        """Format a single question for Bedrock"""
+
+    def _format_for_finetuning(self, json_obj):
+        """Format a single record for fine-tuning"""
+        
+        prompt = self._extract_question(json_obj['inputRecord']['prompt'])
+        reference_response = json_obj['inputRecord']['referenceResponse']
+        
+        # Handling potential list of model responses (future-proofing)
+        model_responses = json_obj['modelResponses']
+        model_response_texts = [resp.get('response', '') for resp in model_responses]
+        
         return {
-            'disclosure': self.disclosure,
-            'prompt': f"{self.prefix}{question}{self.suffix}"
+            "prompt": f"{self.disclosure} {prompt}",
+            "referenceResponse": reference_response,
         }
-    
-    def save_to_csv(self, data, output_path):
-        """Save formatted data to CSV"""
-        df = pd.DataFrame(data)
-        df['formatted_prompt'] = df['question'].apply(
-            lambda q: self.format_for_bedrock(q)['prompt']
-        )
-        df.to_csv(output_path, index=False)
-        return df
+
+    def save_to_jsonl(self, data, output_path):
+        """Save formatted data to JSON Lines file"""
+        with open(output_path, 'w') as f:
+            for record in data:
+                f.write(json.dumps(record) + '\n')
 
 # Usage example:
 if __name__ == "__main__":
     formatter = PromptFormatter()
-    
+
     # Parse and format data
-    data = formatter.parse_file('paste.txt')
-    
-    # Save to CSV
-    df = formatter.save_to_csv(data, 'formatted_prompts.csv')
-    
-    # Print sample
-    print("\nSample formatted prompt:")
-    sample = formatter.format_for_bedrock(data[0]['question'])
-    print(json.dumps(sample, indent=2))
-    
-    print("\nStatistics:")
-    print(f"Total questions processed: {len(data)}")
-    print(f"Average accuracy score: {df['accuracy'].mean():.2f}")
+    data = formatter.parse_file('input.json') # Assuming your input file is named 'input.json'
+
+    # Save to JSON Lines
+    formatter.save_to_jsonl(data, 'formatted_prompts.jsonl')
+
+    print("\nSample formatted record:")
+    print(json.dumps(data[0], indent=2))
+
+    print(f"\nTotal records processed: {len(data)}")
