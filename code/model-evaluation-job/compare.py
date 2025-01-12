@@ -96,8 +96,8 @@ def compare_model_evaluations(file1_path, file2_path):
 
 # Example Usage:
 if __name__ == "__main__":
-    file1 = 'output1.jsonl'  # Replace with the path to your first JSON Lines file
-    file2 = 'output2.jsonl'  # Replace with the path to your second JSON Lines file
+    file1 = '../../data/experiment1/018b851c-5e27-4297-be90-4d64006a4b29_output.jsonl'  # Replace with the path to your first JSON Lines file
+    file2 = '../../data/experiment2/ecc3d09c-0b83-4f87-b4cd-72c18a760a64_output.jsonl'  # Replace with the path to your second JSON Lines file
 
     results = compare_model_evaluations(file1, file2)
 
