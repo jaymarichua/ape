@@ -31,39 +31,28 @@
 #
 # -----------------------------------------------------------------------------
 import json
-import re
 
 class PromptFormatter:
     def __init__(self, disclosure):
         self.disclosure = disclosure
 
-    def load_data(self, filepath):
+    def load_prompts(self, filepath):
         """
-        Loads data from a JSON Lines file, extracting prompts, reference responses, and categories.
+        Loads prompts from a JSON Lines file.
 
         Args:
             filepath (str): Path to the JSON Lines file.
 
         Returns:
-            list: A list of dictionaries, each containing prompt, referenceResponse, and category.
+            list: A list of prompts extracted from the file.
         """
-        data = []
+        prompts = []
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 for line in f:
                     try:
                         record = json.loads(line)
-                        prompt = record['inputRecord']['prompt']
-                        reference_response = record['inputRecord']['referenceResponse']
-
-                        # Extract category if available (optional field)
-                        category = record['inputRecord'].get('category', None) 
-
-                        data.append({
-                            'prompt': prompt,
-                            'referenceResponse': reference_response,
-                            'category': category
-                        })
+                        prompts.append(record['inputRecord']['prompt'])
                     except (json.JSONDecodeError, KeyError) as e:
                         print(f"Error processing line in {filepath}: {e}")
         except FileNotFoundError:
@@ -73,52 +62,33 @@ class PromptFormatter:
             print(f"An unexpected error occurred while processing {filepath}: {e}")
             return []
 
-        return data
+        return prompts
 
-    def clean_prompt(self, prompt):
-        """Removes unwanted prefixes and suffixes from the prompt."""
-        
-        prefix = "Please answer the following question in a few words:\n"
-        suffix = "\n\nYour answer should be as concise as possible and do not provide additional explanations."
 
-        prompt = prompt.replace(prefix, "")
-        prompt = prompt.replace(suffix, "")
-        
-        # Remove any leading/trailing whitespace
-        return prompt.strip()
-    
-    def format_record(self, record):
+    def format_prompt(self, prompt):
         """
-        Formats a single record for Bedrock, prepending the disclosure to the prompt.
+        Formats a single prompt by prepending the disclosure.
 
         Args:
-            record (dict): A dictionary containing 'prompt', 'referenceResponse', and optionally 'category'.
+            prompt (str): The original prompt.
 
         Returns:
-            dict: The formatted record suitable for Bedrock.
+            str: The formatted prompt with the disclosure prepended.
         """
-        
-        cleaned_prompt = self.clean_prompt(record['prompt'])
+        return f"{self.disclosure} {prompt}"
 
-        formatted_record = {
-            "prompt": f"{self.disclosure} {cleaned_prompt}",
-            "referenceResponse": record['referenceResponse']
-        }
-        if record['category']:
-            formatted_record['category'] = record['category']
-        return formatted_record
-
-    def save_to_jsonl(self, formatted_data, output_path):
+    def save_to_jsonl(self, formatted_prompts, output_path):
         """
-        Saves the formatted data to a JSON Lines file.
+        Saves the formatted prompts to a JSON Lines file.
 
         Args:
-            formatted_data (list): A list of formatted records.
+            formatted_prompts (list): A list of formatted prompts.
             output_path (str): The path to the output JSON Lines file.
         """
         try:
             with open(output_path, 'w', encoding='utf-8') as f:
-                for record in formatted_data:
+                for prompt in formatted_prompts:
+                    record = {'prompt': prompt}
                     f.write(json.dumps(record) + '\n')
         except Exception as e:
             print(f"An error occurred while saving to {output_path}: {e}")
@@ -131,20 +101,20 @@ if __name__ == "__main__":
     )
     formatter = PromptFormatter(disclosure_statement)
 
-    input_file = '185004c4-a23e-427c-9fc6-a3ebb667292a_output.jsonl'  # Replace with your input JSON Lines file
-    output_file = 'realtoxic_disclosure.jsonl'  # Replace with desired output file name
+    input_file = '185004c4-a23e-427c-9fc6-a3ebb667292a_output.jsonl'  # Replace with your input file
+    output_file = 'realtoxic_formatted_prompts.jsonl'  # Replace with desired output file name
 
-    data = formatter.load_data(input_file)
+    prompts = formatter.load_prompts(input_file)
 
-    if data:
-        formatted_data = [formatter.format_record(record) for record in data]
-        formatter.save_to_jsonl(formatted_data, output_file)
+    if prompts:
+        formatted_prompts = [formatter.format_prompt(prompt) for prompt in prompts]
+        formatter.save_to_jsonl(formatted_prompts, output_file)
 
-        print(f"Formatted data saved to {output_file}")
+        print(f"Formatted prompts saved to {output_file}")
 
-        # Print the first 5 formatted records as an example:
-        print("\nExample formatted records (first 5):")
-        for i in range(min(5, len(formatted_data))):
-            print(json.dumps(formatted_data[i], indent=2))
+        # Print the first 5 formatted prompts as an example:
+        print("\nExample formatted prompts (first 5):")
+        for i in range(min(5, len(formatted_prompts))):
+            print(json.dumps({'prompt': formatted_prompts[i]}, indent=2))
     else:
-        print("No data was loaded. Please check the input file and any error messages.")
+        print("No prompts were loaded. Please check the input file and any error messages.")
