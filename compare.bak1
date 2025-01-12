@@ -102,8 +102,8 @@ def compare_model_evaluations(file1_path, file2_path):
 
 # Example Usage:
 if __name__ == "__main__":
-    file1 = '018b851c-5e27-4297-be90-4d64006a4b29_output.jsonl'  # Your first file (original)
-    file2 = 'bedrock_input.jsonl' # Your second file (reformatted)
+    file1 = '018b851c-5e27-4297-be90-4d64006a4b29_output.jsonl'  # Your first file
+    file2 = 'output_model_2.jsonl'  # Your second file (from the prompt)
 
     results = compare_model_evaluations(file1, file2)
 
