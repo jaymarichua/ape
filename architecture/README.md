@@ -14,7 +14,14 @@ The goal here is to run a *convenient* workflow using the Amazon Bedrock foundat
 * Stores the output (foundation LLM responses) in separate directories.
 
 ##### Amazon Bedrock Foundation LLM
-* Llama
+* Llama 3 70B Instruct
+
+### AWS Console UI Instructions
+1. Go to Amazon Bedrock console UI.
+2. On the left navigation menu bar, scroll down to `Inference and Assessment` and click on `Evaluations`.
+3. Then create a model evaluation job. You may choose `Programmatic` or `Model as a Judge` or `Human Evaluation` for the job.
+4. Ensure the S3 bucket location to store the model evaluation job output has CORS set up. See the documentation [here](https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation-security-cors.html)!
+5. Run the job!
 
 ## GCP
 ### Coming Soon!
