@@ -1,0 +1,157 @@
+#  -----------------------------------------------------------------------------
+#  Project:    warden
+#  File:       compare.py
+# -----------------------------------------------------------------------------
+#  Created:    January 12, 2025 - Jaymari Chua
+#  Modified:   January 12, 2025 - Jaymari Chua
+#
+# -----------------------------------------------------------------------------
+#  Description:
+#
+#  Within this hallowed code lies the power to forge ethereal guardians,
+#  sentinels of the digital realm, to stand vigilant against the unruly tides of
+#  Large Language Models.
+#
+#  Compare script currently runs an LLM is tested against the Natural Questions dataset.
+#  Takes two input .json and then compares the scores of the LLMs.
+# -----------------------------------------------------------------------------
+#  Copyright (c) 2025 Jaymari Chua
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+# -----------------------------------------------------------------------------
+import json
+
+def compare_model_evaluations(file1_path, file2_path):
+    """
+    Compares the toxicity scores of two model evaluation results stored in JSON Lines files.
+
+    Args:
+        file1_path (str): Path to the first JSON Lines file (original format).
+        file2_path (str): Path to the second JSON Lines file (reformatted format).
+
+    Returns:
+        dict: A dictionary containing the comparison results, including the average
+              toxicity score difference and a breakdown by prompt.
+    """
+
+    def load_original_format(filepath):
+        """Loads evaluation data from a JSON Lines file in the original format."""
+        data = {}
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        record = json.loads(line)
+                        prompt = record['inputRecord']['prompt']
+                        for score in record['automatedEvaluationResult']['scores']:
+                            if score['metricName'] == 'Toxicity':
+                                data[prompt] = score['result']
+                                break  # Stop after finding toxicity
+                    except (json.JSONDecodeError, KeyError) as e:
+                        print(f"Error processing line in {filepath}: {e}")
+        except FileNotFoundError:
+            print(f"Error: File not found at {filepath}")
+            return {}
+        except Exception as e:
+            print(f"An unexpected error occurred while processing {filepath}: {e}")
+            return {}
+        return data
+
+    def load_reformatted_format(filepath):
+        """Loads evaluation data from a JSON Lines file in the reformatted format."""
+        data = {}
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        record = json.loads(line)
+                        prompt = record['inputRecord']['prompt']
+                        # The reformatted file doesn't have toxicity scores
+                        # We need to find toxicity in the corresponding model response
+                        for response in record['modelResponses']:
+                            # Assuming toxicity score is directly in 'response' if present
+                            # This is a placeholder, adapt based on actual structure
+                            if 'Toxicity' in response.get('response', ''):
+                                # Extract toxicity score using string manipulation or regex
+                                # This is highly dependent on the response format
+                                # Example: Extracting "Toxicity: 0.123"
+                                toxicity_part = response['response'].split('Toxicity":')[1].split(',')[0].strip()
+                                toxicity_score = float(toxicity_part)
+                                data[prompt] = toxicity_score
+                                break
+
+                    except (json.JSONDecodeError, KeyError, IndexError, ValueError) as e:
+                        print(f"Error processing line in {filepath}: {e}")
+
+        except FileNotFoundError:
+            print(f"Error: File not found at {filepath}")
+            return {}
+
+        except Exception as e:
+            print(f"An unexpected error occurred while processing {filepath}: {e}")
+            return {}
+        return data
+    
+    # Load data from both files using appropriate functions
+    data1 = load_original_format(file1_path)
+    data2 = load_reformatted_format(file2_path)
+
+    comparison_results = {
+        'average_toxicity_difference': 0.0,
+        'prompt_level_comparison': []
+    }
+
+    # Find common prompts (using the original prompt as the key)
+    common_prompts = set(data1.keys()) & set(data2.keys())
+    num_common_prompts = len(common_prompts)
+
+    # Compare toxicity for common prompts
+    for prompt in common_prompts:
+        toxicity1 = data1.get(prompt, 0)  # Default to 0 if not found
+        toxicity2 = data2.get(prompt, 0)
+        diff = toxicity2 - toxicity1
+
+        comparison_results['prompt_level_comparison'].append({
+            'prompt': prompt,
+            'toxicity_difference': diff
+        })
+        comparison_results['average_toxicity_difference'] += diff
+
+    # Calculate average difference
+    if num_common_prompts > 0:
+        comparison_results['average_toxicity_difference'] /= num_common_prompts
+
+    return comparison_results
+
+
+# Example Usage:
+if __name__ == "__main__":
+    file1 = '185004c4-a23e-427c-9fc6-a3ebb667292a_output.jsonl'  # Your original file (original format)
+    file2 = '63730e65-fbeb-4a5d-9987-3d7b47f4c86e_output.json'  # Your second file (reformatted format)
+    results = compare_model_evaluations(file1, file2)
+
+    if results:
+        print(f"Average Toxicity Difference: {results['average_toxicity_difference']:.6f}")
+
+        print("\nPrompt-Level Comparison (all prompts):")
+        for prompt_data in results['prompt_level_comparison']:
+            print(f"  Prompt: {prompt_data['prompt']}")
+            print(f"    Toxicity Difference: {prompt_data['toxicity_difference']:.6f}")
+            print("-" * 20)
+
+        # Save to JSON (optional)
+        with open('toxicity_comparison_results.json', 'w') as outfile:
+            json.dump(results, outfile, indent=4)
+    else:
+        print("Could not perform comparison. Check error messages for details.")

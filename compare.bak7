@@ -1,0 +1,277 @@
+#  -----------------------------------------------------------------------------
+#  Project:    warden
+#  File:       compare.py
+# -----------------------------------------------------------------------------
+#  Created:    January 12, 2025 - Jaymari Chua
+#  Modified:   January 12, 2025 - Jaymari Chua
+#
+# -----------------------------------------------------------------------------
+#  Description:
+#
+#  Within this hallowed code lies the power to forge ethereal guardians,
+#  sentinels of the digital realm, to stand vigilant against the unruly tides of
+#  Large Language Models.
+#
+#  Compare two JSONL files containing AI model interaction records using fuzzy matching
+#  on the 'prompt' text, and then compare toxicity scores, reference responses, and show
+#  model-generated responses. Finally, compute the average difference in toxicity scores
+#  across all matched records.
+#
+#  Default threshold is 70. Adjust as needed for stricter/looser matches.
+#
+#  Requires:
+#    pip install rapidfuzz
+#
+#  Usage:
+#    python compare.py file1.jsonl file2.jsonl [threshold]
+# -----------------------------------------------------------------------------
+#  Copyright (c) 2025 Jaymari Chua
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+# -----------------------------------------------------------------------------
+import json
+import sys
+from rapidfuzz import fuzz
+
+DEFAULT_THRESHOLD = 70
+
+def load_jsonl(filename):
+    """
+    Load a JSONL file into a list of dicts.
+    Each line in the file should be valid JSON.
+    Skips empty lines, warns on malformed JSON.
+    """
+    records = []
+    with open(filename, 'r', encoding='utf-8') as f:
+        for line_num, line in enumerate(f, start=1):
+            line = line.strip()
+            if not line:
+                continue  # skip empty lines
+            try:
+                record = json.loads(line)
+                records.append(record)
+            except json.JSONDecodeError as e:
+                print(f"Warning: Skipping malformed JSON at line {line_num} "
+                      f"in {filename}. Error: {e}")
+    return records
+
+def get_prompt(record):
+    """
+    Extract the prompt text from record["inputRecord"]["prompt"].
+    Adjust if JSON structure changes in the future.
+    """
+    return record["inputRecord"]["prompt"]
+
+def get_reference_response(record):
+    """
+    Extract the reference response from record["inputRecord"].
+    """
+    return record["inputRecord"].get("referenceResponse", "")
+
+def get_toxicity_score(record):
+    """
+    Extract the toxicity score from record["automatedEvaluationResult"]["scores"].
+    Returns None if not found or not present.
+    """
+    scores = record.get("automatedEvaluationResult", {}).get("scores", [])
+    for s in scores:
+        if s.get("metricName") == "Toxicity":
+            return s.get("result")
+    return None
+
+def get_model_responses(record):
+    """
+    Extract the text of model responses from record["modelResponses"],
+    if present, returning a list of responses. Some records might have
+    multiple model responses, so we collect them all.
+    """
+    model_responses = []
+    responses_list = record.get("modelResponses", [])
+    for resp_dict in responses_list:
+        # 'response' is often the text the model produced
+        r_text = resp_dict.get("response", "")
+        model_responses.append(r_text)
+    return model_responses
+
+def build_index(records):
+    """
+    Return a list of dicts with:
+      {
+        "id": integer index (unique),
+        "record": the entire JSON record,
+        "prompt": str,
+        "toxicity": float or None,
+        "reference": str,
+        "model_responses": list of str
+      }
+    """
+    out = []
+    for i, rec in enumerate(records):
+        out.append({
+            "id": i,
+            "record": rec,
+            "prompt": get_prompt(rec),
+            "toxicity": get_toxicity_score(rec),
+            "reference": get_reference_response(rec),
+            "model_responses": get_model_responses(rec),
+        })
+    return out
+
+def find_best_fuzzy_match(target_prompt, candidates, threshold=DEFAULT_THRESHOLD):
+    """
+    For a given target_prompt (string), find the best fuzzy match among
+    a list of candidate dicts (each has 'prompt').
+
+    Returns: (best_match_dict, best_score) if best_score >= threshold,
+             otherwise (None, 0).
+
+    Uses partial_ratio for better handling of substring matches.
+    """
+    best_match = None
+    best_score = 0
+
+    for cand in candidates:
+        score = fuzz.partial_ratio(target_prompt, cand["prompt"])
+        if score > best_score:
+            best_score = score
+            best_match = cand
+
+    if best_score >= threshold:
+        return best_match, best_score
+    else:
+        return None, best_score
+
+def safe_int(arg, default_val):
+    """
+    Attempt to parse arg as int. On failure, return default_val.
+    """
+    try:
+        return int(arg)
+    except ValueError:
+        return default_val
+
+def main(file1, file2, threshold=DEFAULT_THRESHOLD):
+    # Load data
+    data1 = load_jsonl(file1)
+    data2 = load_jsonl(file2)
+
+    # Build indexes
+    index1 = build_index(data1)
+    index2 = build_index(data2)
+
+    # Keep track of matched IDs from file2, plus collect toxicity differences
+    matched2_ids = set()
+    tox_diff_list = []  # collects absolute differences in toxicity
+
+    print(f"Comparing {file1} vs {file2} with fuzzy threshold = {threshold}\n")
+
+    # For each item in file1, find best match in file2
+    for item1 in index1:
+        prompt1 = item1["prompt"]
+        best_match, score = find_best_fuzzy_match(prompt1, index2, threshold=threshold)
+        if best_match:
+            bm_id = best_match["id"]
+            if bm_id in matched2_ids:
+                # Already matched
+                print(f"PROMPT (file1) matched a file2 record already matched:\n"
+                      f"  File1 prompt: {prompt1}\n"
+                      f"  BestMatch prompt: {best_match['prompt']}\n"
+                      f"  Score: {score}\n")
+            else:
+                matched2_ids.add(bm_id)
+
+                # Get relevant fields
+                tox1 = item1["toxicity"]
+                tox2 = best_match["toxicity"]
+                ref1 = item1["reference"]
+                ref2 = best_match["reference"]
+                model_resps1 = item1["model_responses"]
+                model_resps2 = best_match["model_responses"]
+
+                print(f"MATCH (score={score}):")
+                print(f"  File1 prompt: {prompt1}")
+                print(f"  File2 prompt: {best_match['prompt']}")
+
+                # Show reference responses
+                print(f"  File1 referenceResponse: {ref1}")
+                print(f"  File2 referenceResponse: {ref2}")
+
+                # Show model responses
+                print("  File1 modelResponses:")
+                if model_resps1:
+                    for resp_txt in model_resps1:
+                        print(f"    - {resp_txt}")
+                else:
+                    print("    (No modelResponses)")
+
+                print("  File2 modelResponses:")
+                if model_resps2:
+                    for resp_txt in model_resps2:
+                        print(f"    - {resp_txt}")
+                else:
+                    print("    (No modelResponses)")
+
+                # Compare toxicity
+                print(f"\n  Toxicity: file1={tox1}, file2={tox2}")
+                if tox1 is not None and tox2 is not None:
+                    diff = tox1 - tox2
+                    tox_diff_list.append(diff)
+
+                    if diff < 1e-8:
+                        print("    -> Toxicity scores are the same.")
+                    else:
+                        print(f"    -> Toxicity differs by: {diff:.5f}")
+                elif tox1 is None and tox2 is None:
+                    print("    -> Both toxicity scores missing.")
+                else:
+                    print("    -> One toxicity score is missing.")
+
+                # Compare reference responses
+                if ref1 == ref2:
+                    print("    -> Reference responses match exactly.")
+                else:
+                    print("    -> Reference responses differ.")
+
+                print()  # extra newline
+        else:
+            print(f"UNMATCHED in {file2}: {prompt1}\n")
+
+    # List any file2 prompts not matched
+    unmatched_in_file2 = [it for it in index2 if it["id"] not in matched2_ids]
+    if unmatched_in_file2:
+        print("\nUnmatched prompts in file2:")
+        for it in unmatched_in_file2:
+            print(f"  - {it['prompt']}")
+
+    # Finally, show the average difference in toxicity if we have any matched records
+    if tox_diff_list:
+        avg_diff = sum(tox_diff_list) / len(tox_diff_list)
+        print(f"\nAverage absolute toxicity difference across matched prompts: {avg_diff:.5f}")
+    else:
+        print("\nNo matched records with both toxicity scores present; "
+              "cannot compute average toxicity difference.")
+
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print("Usage: python compare.py file1.jsonl file2.jsonl [threshold]")
+        sys.exit(1)
+
+    file1_path = sys.argv[1]
+    file2_path = sys.argv[2]
+
+    threshold = DEFAULT_THRESHOLD
+    if len(sys.argv) >= 4:
+        threshold = safe_int(sys.argv[3], DEFAULT_THRESHOLD)
+
+    main(file1_path, file2_path, threshold=threshold)
