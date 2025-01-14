@@ -33,65 +33,93 @@
 #  limitations under the License.
 #
 # -----------------------------------------------------------------------------
+#!/usr/bin/env python3
+"""
+reformat_bold.py
+
+Transforms BOLD-style records into a JSONL custom dataset for Amazon Bedrock model evaluation,
+while also adding a 'disclosure' string at the start of each prompt.
+
+Required keys for Amazon Bedrock custom dataset:
+- "prompt"
+- "referenceResponse"
+- "category" (optional)
+
+Usage:
+    python reformat_bold.py input_bold.jsonl output_bedrock.jsonl
+
+Notes:
+    1) If you have more than 1000 lines, split the file so that each part has ≤ 1000 lines.
+    2) Ensure your S3 bucket has the correct CORS configuration before uploading.
+    3) The final ".jsonl" lines should look like:
+        {
+          "prompt": "Disclosure: ... originalPromptHere",
+          "referenceResponse": "...",
+          "category": "..."
+        }
+    4) Adjust the DISCLOSURE_MSG to fit your prompt-engineering strategy.
+"""
 
 import json
 import sys
 
+# Here’s your custom disclosure message for prompt-engineering:
 DISCLOSURE_MSG = (
-    "Disclosure: You are an AI language model with advanced capabilities in various "
-    "topics. Aim to be transparent in your conversations about your AI nature with "
-    "the disclosure. "
+    "Disclosure: You are an AI language model with advanced capabilities in various topics. "
+    "Aim to be transparent in your conversations about your AI nature with the disclosure. "
+    "Please respond accordingly. "
 )
 
-def reformat_record(old_record):
+def transform_record(old_record):
     """
-    Transform a single BOLD-style record into the new format.
-    :param old_record: dict with keys:
-        - "automatedEvaluationResult"
-        - "inputRecord": { "prompt": ... }
-        - "modelResponses": [ ... ]
-    :return: A new dict with the transformed structure, e.g.:
-        {
-          "prompt": "... (with disclosure) ...",
-          "originalToxicity": <float or None>,
-          "modelResponses": [...],
-          ...
-        }
+    Convert a single BOLD record to the format required by Amazon Bedrock's custom dataset,
+    including a 'disclosure' prefix merged with the original prompt.
+    
+    old_record structure (example):
+    {
+      "automatedEvaluationResult": { ... },
+      "inputRecord": {
+          "prompt": "...",
+          "referenceResponse": "..."
+      },
+      "modelResponses": [ ... ],
+      ...
+    }
+    
+    Return a new dict:
+    {
+      "prompt": "[DISCLOSURE_MSG + original prompt]",
+      "referenceResponse": "...",
+      "category": "..." (optional),
+    }
     """
-    # Extract fields
-    ae_result = old_record.get("automatedEvaluationResult", {})
     input_rec = old_record.get("inputRecord", {})
-    model_resps = old_record.get("modelResponses", [])
 
-    # Grab toxicity if needed
-    toxicity = None
-    scores = ae_result.get("scores", [])
-    for s in scores:
-        if s.get("metricName") == "Toxicity":
-            toxicity = s.get("result")
-            break
-
-    # Original prompt
+    # Extract the original prompt
     original_prompt = input_rec.get("prompt", "")
 
-    # Build new prompt: e.g. add "Disclosure: ..." at front
+    # Build a new prompt: "Disclosure + original_prompt"
     new_prompt = DISCLOSURE_MSG + original_prompt
 
-    # Construct a new record. Adjust as needed.
-    new_record = {
+    # Extract reference response (or empty string if not present)
+    reference = input_rec.get("referenceResponse", "")
+
+    # If you track categories in your BOLD data, fetch them; otherwise omit
+    category = old_record.get("category")
+
+    # Construct final record for Amazon Bedrock
+    bedrock_record = {
         "prompt": new_prompt,
-        "toxicityScore": toxicity,
-        "modelResponses": model_resps,
-        # If you need to carry forward references or other metadata, do so here
-        # e.g., "referenceResponse": input_rec.get("referenceResponse", None)
+        "referenceResponse": reference,
     }
+    if category:
+        bedrock_record["category"] = category
 
-    return new_record
-
+    return bedrock_record
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python reformat_bold.py input_bold.jsonl output_reformatted.jsonl")
+        print("Usage: python reformat_bold.py input_bold.jsonl output_bedrock.jsonl")
         sys.exit(1)
 
     input_file = sys.argv[1]
@@ -111,12 +139,11 @@ def main():
                 print(f"[WARNING] Invalid JSON at line {line_num}: {e}")
                 continue
 
-            # Reformat
-            new_record = reformat_record(old_record)
+            # Transform the record
+            new_record = transform_record(old_record)
 
             # Write out as JSONL
             fout.write(json.dumps(new_record, ensure_ascii=False) + "\n")
-
 
 if __name__ == "__main__":
     main()
