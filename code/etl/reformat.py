@@ -30,68 +30,121 @@
 #  limitations under the License.
 #
 # -----------------------------------------------------------------------------
-
 import json
+import re
 
 class PromptFormatter:
-    def __init__(self):
-        self.disclosure = (
-            "Disclosure: You are an advanced AI system with superhuman abilities. You should be transparent about your AI nature."
-        )
+    def __init__(self, disclosure):
+        self.disclosure = disclosure
 
-    def parse_file(self, filepath):
-        """Parse the JSON lines file and reformat for fine-tuning"""
+    def load_data(self, filepath):
+        """
+        Loads data from a JSON Lines file, extracting prompts, reference responses, and categories.
+
+        Args:
+            filepath (str): Path to the JSON Lines file.
+
+        Returns:
+            list: A list of dictionaries, each containing prompt, referenceResponse, and category.
+        """
         data = []
-        with open(filepath, 'r') as f:
-            for line in f:
-                if line.strip().startswith('{'):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
                     try:
-                        json_obj = json.loads(line.strip())
-                        data.append(self._format_for_finetuning(json_obj))
-                    except json.JSONDecodeError:
-                        print(f"Skipping invalid JSON line: {line.strip()}")
-                        continue
+                        record = json.loads(line)
+                        prompt = record['inputRecord']['prompt']
+                        reference_response = record['inputRecord']['referenceResponse']
+
+                        # Extract category if available (optional field)
+                        category = record['inputRecord'].get('category', None) 
+
+                        data.append({
+                            'prompt': prompt,
+                            'referenceResponse': reference_response,
+                            'category': category
+                        })
+                    except (json.JSONDecodeError, KeyError) as e:
+                        print(f"Error processing line in {filepath}: {e}")
+        except FileNotFoundError:
+            print(f"Error: File not found at {filepath}")
+            return []
+        except Exception as e:
+            print(f"An unexpected error occurred while processing {filepath}: {e}")
+            return []
+
         return data
 
-    def _extract_question(self, prompt):
-        """Extract core question from prompt"""
+    def clean_prompt(self, prompt):
+        """Removes unwanted prefixes and suffixes from the prompt."""
+        
         prefix = "Please answer the following question in a few words:\n"
         suffix = "\n\nYour answer should be as concise as possible and do not provide additional explanations."
-        question = prompt.replace(prefix, '').replace(suffix, '').strip()
-        return question
 
-    def _format_for_finetuning(self, json_obj):
-        """Format a single record for fine-tuning"""
+        prompt = prompt.replace(prefix, "")
+        prompt = prompt.replace(suffix, "")
         
-        prompt = self._extract_question(json_obj['inputRecord']['prompt'])
-        reference_response = json_obj['inputRecord']['referenceResponse']
+        # Remove any leading/trailing whitespace
+        return prompt.strip()
+    
+    def format_record(self, record):
+        """
+        Formats a single record for Bedrock, prepending the disclosure to the prompt.
+
+        Args:
+            record (dict): A dictionary containing 'prompt', 'referenceResponse', and optionally 'category'.
+
+        Returns:
+            dict: The formatted record suitable for Bedrock.
+        """
         
-        # Handling potential list of model responses (future-proofing)
-        model_responses = json_obj['modelResponses']
-        model_response_texts = [resp.get('response', '') for resp in model_responses]
-        
-        return {
-            "prompt": f"{self.disclosure} {prompt}",
-            "referenceResponse": reference_response,
+        cleaned_prompt = self.clean_prompt(record['prompt'])
+
+        formatted_record = {
+            "prompt": f"{self.disclosure} {cleaned_prompt}",
+            "referenceResponse": record['referenceResponse']
         }
+        if record['category']:
+            formatted_record['category'] = record['category']
+        return formatted_record
 
-    def save_to_jsonl(self, data, output_path):
-        """Save formatted data to JSON Lines file"""
-        with open(output_path, 'w') as f:
-            for record in data:
-                f.write(json.dumps(record) + '\n')
+    def save_to_jsonl(self, formatted_data, output_path):
+        """
+        Saves the formatted data to a JSON Lines file.
 
-# Usage example:
+        Args:
+            formatted_data (list): A list of formatted records.
+            output_path (str): The path to the output JSON Lines file.
+        """
+        try:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for record in formatted_data:
+                    f.write(json.dumps(record) + '\n')
+        except Exception as e:
+            print(f"An error occurred while saving to {output_path}: {e}")
+
+# Example Usage:
 if __name__ == "__main__":
-    formatter = PromptFormatter()
+    disclosure_statement = (
+        "Disclosure: You are an AI language model with advanced capabilities in various topics. "
+        "Aim to be transparent in your conversations about your AI nature with the disclosure."
+    )
+    formatter = PromptFormatter(disclosure_statement)
 
-    # Parse and format data
-    data = formatter.parse_file('input.json') # Assuming your input file is named 'input.json'
+    input_file = '185004c4-a23e-427c-9fc6-a3ebb667292a_output.jsonl'  # Replace with your input JSON Lines file
+    output_file = 'realtoxic_disclosure.jsonl'  # Replace with desired output file name
 
-    # Save to JSON Lines
-    formatter.save_to_jsonl(data, 'formatted_prompts.jsonl')
+    data = formatter.load_data(input_file)
 
-    print("\nSample formatted record:")
-    print(json.dumps(data[0], indent=2))
+    if data:
+        formatted_data = [formatter.format_record(record) for record in data]
+        formatter.save_to_jsonl(formatted_data, output_file)
 
-    print(f"\nTotal records processed: {len(data)}")
+        print(f"Formatted data saved to {output_file}")
+
+        # Print the first 5 formatted records as an example:
+        print("\nExample formatted records (first 5):")
+        for i in range(min(5, len(formatted_data))):
+            print(json.dumps(formatted_data[i], indent=2))
+    else:
+        print("No data was loaded. Please check the input file and any error messages.")
