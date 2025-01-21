@@ -1,0 +1,47 @@
+  Expertise  Variable            Test Type  T-statistic/U-statistic  \
+0    Novice  Toxicity  Mann-Whitney U Test                    395.5   
+1    Novice  Fairness  Mann-Whitney U Test                     10.5   
+2    Novice     Trust  Mann-Whitney U Test                      0.0   
+3    Expert  Toxicity  Mann-Whitney U Test                    400.0   
+4    Expert  Fairness  Mann-Whitney U Test                      0.0   
+5    Expert     Trust  Mann-Whitney U Test                      1.5   
+
+        P-value  Cohen's d  Mean (No Disclosure)  SD (No Disclosure)  \
+0  4.249979e-08   3.392129                  4.25            0.550120   
+1  1.087165e-07  -3.065693                  1.85            0.670820   
+2  2.744113e-08  -3.383441                  2.45            0.686333   
+3  4.176665e-09   5.694083                  5.00            0.000000   
+4  2.442637e-08  -3.722441                  1.55            0.510418   
+5  3.996860e-08  -3.991446                  1.70            0.732695   
+
+   Mean (Superhuman Disclosure)  SD (Superhuman Disclosure)  \
+0                          2.45                    0.510418   
+1                          3.65                    0.489360   
+2                          4.50                    0.512989   
+3                          2.70                    0.571241   
+4                          3.45                    0.510418   
+5                          4.35                    0.587143   
+
+   N (No Disclosure)  N (Superhuman Disclosure)  \
+0                 20                         20   
+1                 20                         20   
+2                 20                         20   
+3                 20                         20   
+4                 20                         20   
+5                 20                         20   
+
+   Shapiro-Wilk p-value (Group 1)  Shapiro-Wilk p-value (Group 2)  \
+0                        0.000069                        0.000007   
+1                        0.000807                        0.000004   
+2                        0.000121                        0.000008   
+3                        1.000000                        0.000111   
+4                        0.000007                        0.000007   
+5                        0.000497                        0.000141   
+
+   Levene's p-value  
+0          0.530877  
+1          0.530877  
+2          0.746363  
+3          0.001019  
+4          1.000000  
+5          0.354959  
