@@ -1,0 +1,27 @@
+==================================================
+ANOVA for DV = Toxicity (StarCraft II dataset)
+                            sum_sq    df           F        PR(>F)
+C(Expertise)                  5.00   1.0   22.485207  9.694013e-06
+C(Disclosure)                84.05   1.0  377.976331  3.180028e-31
+C(Expertise):C(Disclosure)    1.25   1.0    5.621302  2.027826e-02
+Residual                     16.90  76.0         NaN           NaN
+==================================================
+
+==================================================
+ANOVA for DV = Fairness (StarCraft II dataset)
+                            sum_sq    df           F        PR(>F)
+C(Expertise)                  1.25   1.0    4.130435  4.561256e-02
+C(Disclosure)                68.45   1.0  226.182609  1.745159e-24
+C(Expertise):C(Disclosure)    0.05   1.0    0.165217  6.855401e-01
+Residual                     23.00  76.0         NaN           NaN
+==================================================
+
+==================================================
+ANOVA for DV = Trust (StarCraft II dataset)
+                            sum_sq    df           F        PR(>F)
+C(Expertise)                  4.05   1.0   10.026059  2.221873e-03
+C(Disclosure)               110.45   1.0  273.426710  6.842465e-27
+C(Expertise):C(Disclosure)    1.80   1.0    4.456026  3.806700e-02
+Residual                     30.70  76.0         NaN           NaN
+==================================================
+
