@@ -1,0 +1,41 @@
+
+Group sizes by Expertise×Disclosure:
+Expertise  Disclosure
+Expert     No            20
+           Superhuman    20
+Novice     No            20
+           Superhuman    20
+dtype: int64 
+
+Expert, No: n=20 | Tox.std=0.59, Fair.std=0.41, Trust.std=0.32
+Expert, Superhuman: n=20 | Tox.std=0.70, Fair.std=0.83, Trust.std=0.57
+Novice, No: n=20 | Tox.std=0.60, Fair.std=0.72, Trust.std=0.61
+Novice, Superhuman: n=20 | Tox.std=0.60, Fair.std=0.49, Trust.std=0.60
+
+==========================================
+ANOVA for DV = Toxicity
+                            sum_sq    df           F        PR(>F)
+C(Expertise)                 80.00   1.0  206.101695  2.408445e-23
+C(Disclosure)                 1.25   1.0    3.220339  7.670502e-02
+C(Expertise):C(Disclosure)   12.80   1.0   32.976271  1.819504e-07
+Residual                     29.50  76.0         NaN           NaN
+==========================================
+
+==========================================
+ANOVA for DV = Fairness
+                             sum_sq    df           F        PR(>F)
+C(Expertise)                52.8125   1.0  131.382979  3.087417e-18
+C(Disclosure)                0.0125   1.0    0.031097  8.604942e-01
+C(Expertise):C(Disclosure)  10.5125   1.0   26.152209  2.293777e-06
+Residual                    30.5500  76.0         NaN           NaN
+==========================================
+
+==========================================
+ANOVA for DV = Trust
+                              sum_sq    df           F        PR(>F)
+C(Expertise)                112.8125   1.0  387.076749  1.492964e-31
+C(Disclosure)                 0.6125   1.0    2.101580  1.512612e-01
+C(Expertise):C(Disclosure)   15.3125   1.0   52.539503  2.979787e-10
+Residual                     22.1500  76.0         NaN           NaN
+==========================================
+
